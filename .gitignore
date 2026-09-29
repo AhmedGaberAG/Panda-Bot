@@ -1,0 +1,31 @@
+# ROS 2 / Colcon
+build/
+install/
+log/
+
+# ROS 2 generated files
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+.pytest_cache/
+
+# Generated / temporary files
+*.tmp
+*.swp
+*.swo
+
+# Gazebo
+.gazebo/
+
+# RViz
+*.rviz.bak
