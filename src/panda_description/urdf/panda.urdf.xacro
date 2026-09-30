@@ -1,0 +1,311 @@
+<?xml version="1.0"?>
+
+<robot name="panda" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find panda_description)/urdf/properties.xacro" />
+  <xacro:include filename="$(find panda_description)/urdf/gazebo.xacro" />
+
+  <link name="base_footprint" />
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0.15" rpy="0 0 0" />
+      <mass value="27.2119271741661" />
+      <inertia ixx="0.667544367089829" ixy="-0.003644303012145" ixz="1.56369460427123E-05"
+        iyy="0.793696306041955" iyz="8.83618414198071E-06"
+        izz="0.5250808338668" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/base_link.STL" />
+      </geometry>
+      <material name="silver" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint" />
+    <child link="base_link" />
+    <origin xyz="0 0 ${base_height}" rpy="0 0 0" />
+  </joint>
+
+  <link name="wheel_right_link">
+    <inertial>
+      <origin xyz="-9.38145109998561E-19 0 0.00334648564566739" rpy="0 0 0" />
+      <mass value="0.111217499574579" />
+      <inertia ixx="0.00015302939399365" ixy="4.66148195875658E-36" ixz="-2.49507876350236E-20"
+        iyy="0.00015302939399365" iyz="2.41933526116629E-37"
+        izz="0.000296413441143407" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/wheel_right_link.STL" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0" />
+      <geometry>
+        <sphere radius="${wheel_radius}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wheel_right_joint" type="continuous">
+    <origin xyz="0 -${wheel_separation / 2.0} 0.027" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="wheel_right_link" />
+    <axis xyz="0 1 0" />
+  </joint>
+
+  <link name="wheel_left_link">
+    <inertial>
+      <origin xyz="-9.38145109998561E-19 -3.46944695195361E-18 0.00334648564566742" rpy="0 0 0" />
+      <mass value="0.111217499574579" />
+      <inertia ixx="0.00015302939399365" ixy="4.66148195875658E-36" ixz="-2.49507876350236E-20"
+        iyy="0.00015302939399365" iyz="2.41933526116628E-37"
+        izz="0.000296413441143407" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="-${pi / 2.0} 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/wheel_left_link.STL" />
+      </geometry>
+      <material name="black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="-${pi / 2.0} 0 0" />
+      <geometry>
+        <sphere radius="${wheel_radius}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wheel_left_joint" type="continuous">
+    <origin xyz="0 ${wheel_separation / 2.0} 0.027" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="wheel_left_link" />
+    <axis xyz="0 1 0" />
+  </joint>
+
+  <link name="caster_wheel_front_right_link">
+    <inertial>
+      <origin xyz="0.000112106039951765 -0.0131001965791396 -0.00971891663055621" rpy="0 0 0" />
+      <mass value="0.0122759606521629" />
+      <inertia ixx="1.34725401056239E-06" ixy="-8.24603487493509E-13" ixz="6.97336372879413E-13"
+        iyy="1.26067796832325E-06" iyz="-4.08890600093701E-08"
+        izz="9.88954361954789E-07" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/caster_wheel_front_right_link.STL" />
+      </geometry>
+      <material name="red" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.0148" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="caster_wheel_front_right_joint" type="fixed">
+    <origin xyz="0.135 -0.135 -0.0042" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="caster_wheel_front_right_link" />
+  </joint>
+
+  <link name="caster_wheel_rear_right_link">
+    <inertial>
+      <origin xyz="0.0121121060399519 -0.0173001965791396 -0.0242189166305561" rpy="0 0 0" />
+      <mass value="0.0122759606521629" />
+      <inertia ixx="1.34725401056239E-06" ixy="-8.24603487753672E-13" ixz="6.97336374806176E-13"
+        iyy="1.26067796832325E-06" iyz="-4.08890600093691E-08"
+        izz="9.88954361954788E-07" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <mesh
+          filename="package://panda_description/meshes/caster_wheel_rear_right_link.STL" />
+      </geometry>
+      <material name="red" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.019" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="caster_wheel_rear_right_joint" type="fixed">
+    <origin xyz="-0.1205 -0.147 0" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="caster_wheel_rear_right_link" />
+  </joint>
+
+  <link name="caster_wheel_front_left_link">
+    <inertial>
+      <origin xyz="0.000112106039951709 -0.0131001965791396 -0.00971891663055621" rpy="0 0 0" />
+      <mass value="0.0122759606521629" />
+      <inertia ixx="1.34725401056239E-06" ixy="-8.24603488448647E-13" ixz="6.97336372385257E-13"
+        iyy="1.26067796832324E-06" iyz="-4.08890600093696E-08"
+        izz="9.88954361954788E-07" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/caster_wheel_front_left_link.STL" />
+      </geometry>
+      <material name="red" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.0148" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="caster_wheel_front_left_joint" type="fixed">
+    <origin xyz="0.135 0.135 -0.0042" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="caster_wheel_front_left_link" />
+  </joint>
+
+  <link name="caster_wheel_rear_left_link">
+    <inertial>
+      <origin xyz="-0.0118878939600484 -0.0173001965791396 -0.0242189166305562" rpy="0 0 0" />
+      <mass value="0.0122759606521629" />
+      <inertia ixx="1.34725401056239E-06" ixy="-8.24603488571671E-13" ixz="6.97336372914852E-13"
+        iyy="1.26067796832324E-06" iyz="-4.08890600093696E-08"
+        izz="9.88954361954787E-07" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/caster_wheel_rear_left_link.STL" />
+      </geometry>
+      <material name="red" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.019" rpy="${pi / 2.0} 0 ${pi / 2.0}" />
+      <geometry>
+        <sphere radius="${caster_radius}" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="caster_wheel_rear_left_joint" type="fixed">
+    <origin xyz="-0.1205 0.147 0" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="caster_wheel_rear_left_link" />
+  </joint>
+
+  <link name="laser_link">
+    <inertial>
+      <origin xyz="0.0119602386099803 -0.0188648851800478 0.000532090618963833" rpy="0 0 0" />
+      <mass value="0.0730845774621507" />
+      <inertia ixx="1.95808776994119E-05" ixy="-4.2839086389841E-07" ixz="1.03933478323725E-07"
+        iyy="4.1418456096352E-05" iyz="-9.42692746965273E-09"
+        izz="2.4125010573956E-05" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/laser_link.STL" />
+      </geometry>
+      <material name="dark_grey" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/laser_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="laser_joint" type="fixed">
+    <origin xyz="0 0 0.2186" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="laser_link" />
+  </joint>
+
+  <link name="camera_link">
+    <inertial>
+      <origin xyz="2.31886151408309E-06 -0.00106361339497069 0.000514343154120966" rpy="0 0 0" />
+      <mass value="0.00160268303296125" />
+      <inertia ixx="7.970311297773E-08" ixy="1.0151638717881E-10" ixz="-8.24682351021939E-11"
+        iyy="5.65342538259224E-08" iyz="3.24601279851475E-09"
+        izz="1.26907371506856E-07" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 -${pi / 2.0}" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/camera_link.STL" />
+      </geometry>
+      <material name="green" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi / 2.0} 0 -${pi / 2.0}" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/camera_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <origin xyz="0.2537 0 0.2675" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="camera_link" />
+  </joint>
+
+  <link name="camera_optical_frame" />
+
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link" />
+    <child link="camera_optical_frame" />
+    <origin xyz="0 0 0" rpy="${-pi / 2.0} 0 ${-pi / 2.0}" />
+  </joint>
+
+  <link name="imu_link">
+    <inertial>
+      <origin xyz="-3.13553361114438E-05 -1.22263927008167E-05 -0.000584623678460128" rpy="0 0 0" />
+      <mass value="0.000528415362211671" />
+      <inertia ixx="8.59427875965147E-09" ixy="7.39803301464271E-11" ixz="7.58988806787929E-12"
+        iyy="1.46199509127234E-08" iyz="1.7279463159331E-12"
+        izz="2.30279421279312E-08" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/imu_link.STL" />
+      </geometry>
+      <material name="blue" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://panda_description/meshes/imu_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <origin xyz="0 0 0.164" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="imu_link" />
+  </joint>
+
+</robot>
