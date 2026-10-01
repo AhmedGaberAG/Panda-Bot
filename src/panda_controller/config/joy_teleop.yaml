@@ -1,0 +1,24 @@
+joy_teleop:
+  ros__parameters:
+
+    move:
+      type: topic
+      interface_type: geometry_msgs/msg/TwistStamped
+      topic_name: panda_controller/cmd_vel
+
+      # R1 button acts as the deadman switch
+      deadman_buttons: [5]
+
+      axis_mappings:
+
+        # Right analog stick — vertical axis
+        twist-linear-x:
+          axis: 1
+          scale: 1.0
+          offset: 0.0
+
+        # Left analog stick — horizontal axis
+        twist-angular-z:
+          axis: 3
+          scale: 1.0
+          offset: 0.0

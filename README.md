@@ -2,7 +2,7 @@
 
 **Panda-Bot** is a ROS 2-powered autonomous restaurant delivery robot designed for indoor food delivery applications.
 
-The project combines **robot description, simulation, multi-sensor perception, navigation, and interactive interfaces** into a mobile robotic platform designed to operate in restaurant environments.
+The project combines **robot modeling, CAD integration, physics simulation, ros2_control, differential-drive kinematics, sensor simulation, visualization, and joystick teleoperation** into a mobile robotic platform.
 
 <p align="center">
   <img src="media/panda_cad.png" width="45%">
@@ -13,103 +13,325 @@ The project combines **robot description, simulation, multi-sensor perception, n
 
 ## 🚀 Overview
 
-Panda-Bot is designed as an indoor autonomous mobile robot capable of transporting food and interacting with its environment.
+Panda-Bot is designed as an indoor mobile robot capable of transporting food and interacting with its environment.
 
-The platform integrates:
+The current platform includes:
 
 * 🤖 ROS 2 robot architecture
-* 🗺️ SLAM and autonomous navigation
-* 📡 LiDAR-based perception
-* 📷 Camera perception
-* 🧭 IMU sensing
-* 🖥️ Interactive touchscreen interface
-* 🌐 ROS 2 ↔ Gazebo communication
-* 🏠 Indoor restaurant simulation environments
+* 🧩 URDF/Xacro robot description
+* ⚙️ ros2_control integration
+* 🚗 Differential-drive control
+* 📐 Forward & inverse DDR kinematics
+* 🧭 Wheel-based odometry
+* 🔄 TF2 frame broadcasting
+* 🎮 Joystick teleoperation
+* 📡 LiDAR simulation
+* 📷 RGB camera simulation
+* 🧭 IMU simulation
+* 🌍 Gazebo physics simulation
+* 👁️ RViz2 visualization
+* 🌉 ROS 2 ↔ Gazebo communication
 
-The current repository focuses on the robot's **description, simulation, visualization, and sensor integration**, providing the foundation for higher-level autonomous navigation and application software.
+The project is structured as a foundation for future **SLAM, localization, autonomous navigation, perception, and restaurant delivery applications**.
 
 ---
 
-## 🧩 System Architecture
+## 🧠 System Architecture
 
 ```text
-                        ┌─────────────────────┐
-                        │      Panda-Bot      │
-                        │   Mobile Platform   │
-                        └──────────┬──────────┘
-                                   │
-             ┌─────────────────────┼─────────────────────┐
-             │                     │                     │
-        Robot Model            Sensors              Simulation
-             │                     │                     │
-      ┌──────┴──────┐       ┌──────┼──────┐       ┌──────┴──────┐
-      │ URDF/Xacro  │       │ LiDAR       │       │ Gazebo Sim   │
-      │ TF2         │       │ Camera      │       │ Worlds       │
-      │ Meshes      │       │ IMU         │       │ Physics      │
-      └─────────────┘       └─────────────┘       └─────────────┘
-                                   │
-                                   ▼
-                            ROS 2 Interfaces
-                                   │
-                         ┌─────────┴─────────┐
-                         │ Navigation / SLAM │
-                         │ Perception        │
-                         │ Applications      │
-                         └───────────────────┘
+                         ┌──────────────────────┐
+                         │      Panda-Bot       │
+                         │   Mobile Platform    │
+                         └──────────┬───────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                     │
+        Robot Description       Control System        Simulation
+              │                     │                     │
+       ┌──────┴──────┐       ┌──────┴──────┐       ┌──────┴──────┐
+       │ URDF/Xacro  │       │ ros2_control │       │ Gazebo Sim  │
+       │ CAD Meshes  │       │ Controllers  │       │ Physics     │
+       │ TF Frames   │       │ Hardware     │       │ Sensors     │
+       └─────────────┘       └──────┬───────┘       └─────────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         │ Differential Drive  │
+                         │                    │
+                         │ cmd_vel             │
+                         │      ↓              │
+                         │ Wheel Velocities    │
+                         │      ↓              │
+                         │ Joint States        │
+                         │      ↓              │
+                         │ Odometry + TF       │
+                         └──────────┬──────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         │ Sensors / ROS 2     │
+                         │ LiDAR • Camera • IMU│
+                         └─────────────────────┘
 ```
 
 ---
 
-## 🛠️ Technologies
+## 📐 Differential-Drive Kinematics
 
-| Technology        | Purpose                                  |
-| ----------------- | ---------------------------------------- |
-| **ROS 2**         | Robot middleware and system architecture |
-| **URDF / Xacro**  | Robot modeling and description           |
-| **RViz2**         | Robot visualization and TF inspection    |
-| **Gazebo Sim**    | Physics-based robot simulation           |
-| **ros_gz_bridge** | ROS 2 ↔ Gazebo communication             |
-| **LiDAR**         | 2D environment perception                |
-| **Camera**        | Visual perception                        |
-| **IMU**           | Orientation and inertial sensing         |
-| **STL Meshes**    | CAD-based robot visualization            |
-| **Python**        | ROS 2 launch and integration             |
+The Panda-Bot uses a two-wheel differential-drive configuration with:
+
+```text
+Wheel Radius       = 0.065 m
+Wheel Separation   = 0.37 m
+```
+
+### Forward Kinematics
+
+Wheel angular velocities are converted into robot linear and angular velocity:
+
+$$
+v = \frac{r}{2}(\phi_R + \phi_L)
+$$
+
+$$
+\omega = \frac{r}{L}(\phi_R - \phi_L)
+$$
+
+Where:
+
+* `r` = wheel radius
+* `L` = wheel separation
+* `φ_R` = right wheel angular velocity
+* `φ_L` = left wheel angular velocity
+* `v` = robot linear velocity
+* `ω` = robot angular velocity
+
+### Inverse Kinematics
+
+Robot velocity commands are converted into wheel angular velocities:
+
+$$
+\phi_R = \frac{v}{r} + \frac{L\omega}{2r}
+$$
+
+$$
+\phi_L = \frac{v}{r} - \frac{L\omega}{2r}
+$$
+
+The complete mathematical derivation is documented in:
+
+**`media/DDR_kinematics.pdf`**
 
 ---
 
-## 📁 Repository Structure
+## ⚙️ ros2_control
+
+The robot uses `ros2_control` to separate the control layer from the robot hardware/simulation interface.
 
 ```text
-panda_ws/
-├── media/
-│   ├── panda_cad.png
-│   ├── panda_simulation_1.png
-│   ├── panda_simulation_2.png
-│   └── panda_visualization.png
-│
-├── src/
-│   ├── panda_description/
-│   │   ├── config/
-│   │   │   └── gz_bridge.yaml
-│   │   ├── launch/
-│   │   │   ├── display.launch.py
-│   │   │   └── gazebo.launch.py
-│   │   ├── meshes/
-│   │   ├── models/
-│   │   ├── photos/
-│   │   ├── rviz/
-│   │   │   └── panda.rviz
-│   │   ├── urdf/
-│   │   │   ├── panda.urdf.xacro
-│   │   │   ├── properties.xacro
-│   │   │   └── gazebo.xacro
-│   │   └── worlds/
-│   │
-│   └── panda_hardware/
-│
-├── .gitignore
-└── README.md
+                 ROS 2
+                   │
+                   ▼
+          ┌─────────────────┐
+          │ Controller      │
+          │ Manager         │
+          └────────┬────────┘
+                   │
+          ┌────────┴────────┐
+          │                 │
+          ▼                 ▼
+   panda_controller   simple_velocity_controller
+   DiffDriveController    JointGroupVelocity
+          │                 │
+          └────────┬────────┘
+                   ▼
+             Wheel Joints
+                   │
+                   ▼
+          ros2_control Hardware
+                   │
+                   ▼
+             Gazebo / Robot
 ```
+
+The robot defines velocity command interfaces and position/velocity state interfaces for:
+
+```text
+wheel_right_joint
+wheel_left_joint
+```
+
+The simulation currently uses:
+
+```text
+ign_ros2_control/IgnitionSystem
+```
+
+---
+
+## 🎛️ Differential-Drive Controllers
+
+The project contains two control approaches.
+
+### Standard Controller
+
+The production-oriented approach uses:
+
+```text
+diff_drive_controller/DiffDriveController
+```
+
+It provides:
+
+* `cmd_vel` processing
+* Differential-drive kinematics
+* Wheel velocity commands
+* Odometry
+* Odometry TF
+* Velocity limiting
+* Wheel data publishing
+
+### Custom Controller
+
+A custom Python controller is also included for understanding the internal mathematics of differential-drive control.
+
+```text
+TwistStamped
+     │
+     ▼
+Inverse Kinematics
+     │
+     ▼
+Wheel Velocities
+     │
+     ▼
+JointGroupVelocityController
+     │
+     ▼
+Wheel Joints
+     │
+     ▼
+Joint States
+     │
+     ▼
+Forward Kinematics
+     │
+     ▼
+Odometry + TF
+```
+
+The custom controller implements:
+
+* Inverse DDR kinematics
+* Forward DDR kinematics
+* Wheel velocity estimation
+* Differential-drive odometry
+* `odom → base_footprint` TF broadcasting
+
+The controller can be selected at launch time:
+
+```bash
+ros2 launch panda_controller controller.launch.py
+```
+
+Custom controller:
+
+```bash
+ros2 launch panda_controller controller.launch.py \
+  use_simple_controller:=true
+```
+
+Standard `DiffDriveController`:
+
+```bash
+ros2 launch panda_controller controller.launch.py \
+  use_simple_controller:=false
+```
+
+> The two controllers are alternative control paths and should not control the same wheel joints simultaneously.
+
+---
+
+## 🧭 Odometry & TF
+
+The custom controller calculates the robot pose from wheel displacement.
+
+```text
+Wheel Positions
+      │
+      ▼
+ΔθR , ΔθL
+      │
+      ▼
+Forward Kinematics
+      │
+      ▼
+Δs , Δθ
+      │
+      ▼
+x , y , θ
+      │
+      ├──────────────► /panda_controller/odom
+      │
+      └──────────────► odom → base_footprint
+```
+
+The odometry message contains:
+
+* Position
+* Orientation
+* Linear velocity
+* Angular velocity
+
+The TF transform provides the spatial relationship:
+
+```text
+odom
+  │
+  ▼
+base_footprint
+  │
+  ▼
+base_link
+  ├── wheel_right_link
+  ├── wheel_left_link
+  ├── laser_link
+  ├── camera_link
+  └── imu_link
+```
+
+---
+
+## 🎮 Joystick Teleoperation
+
+The robot supports joystick control through:
+
+```text
+joy
+  │
+  ▼
+joy_teleop
+  │
+  ▼
+TwistStamped
+  │
+  ▼
+panda_controller/cmd_vel
+  │
+  ▼
+Differential-Drive Controller
+```
+
+Launch joystick teleoperation with:
+
+```bash
+ros2 launch panda_controller joystick_teleop.launch.py
+```
+
+The current configuration uses:
+
+* Right analog stick → linear velocity
+* Left analog stick → angular velocity
+* R1 → deadman switch
+* 20 Hz joystick autorepeat
 
 ---
 
@@ -118,15 +340,26 @@ panda_ws/
 The Panda-Bot model is built using **URDF/Xacro** and includes:
 
 * Differential-drive wheels
-* Front and rear caster wheels
+* Four caster wheels
 * LiDAR
 * RGB camera
 * IMU
 * Camera optical frame
-* `base_footprint` and `base_link`
-* Sensor and wheel TF frames
+* `base_footprint`
+* `base_link`
+* Wheel and sensor TF frames
+* CAD-derived STL meshes
+* Gazebo simulation properties
+* ros2_control interfaces
 
-The robot uses reusable Xacro properties for dimensions such as wheel radius, wheel separation, and base height.
+Main Xacro files:
+
+```text
+panda.urdf.xacro
+properties.xacro
+gazebo.xacro
+ros2_control.xacro
+```
 
 ---
 
@@ -134,16 +367,16 @@ The robot uses reusable Xacro properties for dimensions such as wheel radius, wh
 
 ### LiDAR
 
-A 2D GPU LiDAR is simulated for indoor environment perception.
+A GPU-based 2D LiDAR is simulated for indoor perception.
 
 ```text
-Samples:      360
-Update rate:  5 Hz
-Range:        0.12 – 12.0 m
-Noise:        Gaussian
+Samples:       360
+Update Rate:   5 Hz
+Range:         0.12 – 12.0 m
+Noise:         Gaussian
 ```
 
-The simulated scan is bridged to ROS 2 through:
+ROS 2 topic:
 
 ```text
 /scan
@@ -151,11 +384,11 @@ The simulated scan is bridged to ROS 2 through:
 
 ### Camera
 
-The robot includes a simulated RGB camera:
+The robot includes a simulated RGB camera.
 
 ```text
-Resolution:   640 × 480
-Update rate:  30 Hz
+Resolution:    640 × 480
+Update Rate:   30 Hz
 Horizontal FOV: ~60°
 ```
 
@@ -167,7 +400,7 @@ ROS 2 topic:
 
 ### IMU
 
-The robot includes a simulated IMU operating at:
+The simulated IMU operates at:
 
 ```text
 100 Hz
@@ -179,24 +412,26 @@ ROS 2 topic:
 /imu/out
 ```
 
-The sensor configuration and ROS–Gazebo topic mappings are defined inside the description package.
-
 ---
 
 ## 🌍 Gazebo Simulation
 
 Panda-Bot uses **Gazebo Sim** for physics-based simulation.
 
-The Gazebo launch system supports:
+The simulation includes:
 
-* Custom world selection
-* Robot spawning from `/robot_description`
-* Gazebo resource paths
-* Sensor simulation
-* ROS 2 ↔ Gazebo bridging
+* Robot spawning
+* Custom worlds
+* Wheel friction
+* Physics parameters
+* ros2_control
+* LiDAR
+* Camera
+* IMU
+* ROS 2 ↔ Gazebo bridges
 * Simulation time
 
-Example:
+Launch the default simulation:
 
 ```bash
 ros2 launch panda_description gazebo.launch.py
@@ -205,40 +440,38 @@ ros2 launch panda_description gazebo.launch.py
 Launch a specific world:
 
 ```bash
-ros2 launch panda_description gazebo.launch.py world_name:=small_house
+ros2 launch panda_description gazebo.launch.py \
+  world_name:=small_house
 ```
-
-The launch system automatically configures the Gazebo resource path and spawns the robot from the generated Xacro description.
 
 ---
 
 ## 👁️ RViz2 Visualization
 
-RViz2 is configured to visualize:
+RViz2 is configured for:
 
-* Robot model
-* TF tree
-* Wheels
-* Sensors
-* Robot frames
-* Navigation goals
+* Robot model visualization
+* TF inspection
+* Sensor frames
+* Laser scan visualization
+* Navigation visualization
+* Robot pose
 * Initial pose
+* Coordinate frames
 
-Launch the visualization:
+Launch RViz2:
 
 ```bash
 ros2 launch panda_description display.launch.py
 ```
 
-The RViz configuration uses `base_footprint` as the fixed frame and loads the robot description from `/robot_description`.
-
 ---
 
-## 🔄 ROS 2 ↔ Gazebo Bridge
+## 🌉 ROS 2 ↔ Gazebo Bridge
 
-The project uses `ros_gz_bridge` to exchange simulation data between ROS 2 and Gazebo.
+`ros_gz_bridge` is used to exchange simulation data between Gazebo and ROS 2.
 
-Current bridged interfaces include:
+Current interfaces include:
 
 ```text
 /clock
@@ -251,22 +484,76 @@ This allows ROS 2 nodes to consume simulated sensor data using standard ROS 2 me
 
 ---
 
-## 🎯 Project Roadmap
+## 📁 Repository Structure
+
+```text
+panda_ws/
+├── media/
+│   ├── DDR_kinematics.pdf
+│   ├── panda_cad.png
+│   ├── panda_simulation_1.png
+│   ├── panda_simulation_2.png
+│   └── panda_visualization.png
+│
+├── src/
+│   ├── panda_controller/
+│   │   ├── config/
+│   │   │   ├── joy_config.yaml
+│   │   │   ├── joy_teleop.yaml
+│   │   │   └── panda_controllers.yaml
+│   │   ├── launch/
+│   │   │   ├── controller.launch.py
+│   │   │   └── joystick_teleop.launch.py
+│   │   └── panda_controller/
+│   │       └── simple_controller.py
+│   │
+│   ├── panda_description/
+│   │   ├── config/
+│   │   │   └── gz_bridge.yaml
+│   │   ├── launch/
+│   │   │   ├── display.launch.py
+│   │   │   └── gazebo.launch.py
+│   │   ├── meshes/
+│   │   ├── rviz/
+│   │   ├── urdf/
+│   │   │   ├── panda.urdf.xacro
+│   │   │   ├── properties.xacro
+│   │   │   ├── gazebo.xacro
+│   │   │   └── ros2_control.xacro
+│   │   └── worlds/
+│   │
+│   └── panda_hardware/
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+## 🗺️ Project Roadmap
 
 * [x] Robot CAD model
 * [x] URDF/Xacro robot description
 * [x] TF frame structure
 * [x] Differential-drive model
+* [x] DDR forward kinematics
+* [x] DDR inverse kinematics
+* [x] ros2_control integration
+* [x] Standard DiffDriveController configuration
+* [x] Custom differential-drive controller
+* [x] Wheel-based odometry
+* [x] `odom → base_footprint` TF
+* [x] Joystick teleoperation
 * [x] Gazebo simulation
 * [x] RViz2 visualization
 * [x] LiDAR simulation
 * [x] Camera simulation
 * [x] IMU simulation
 * [x] ROS 2 ↔ Gazebo bridge
-* [ ] Hardware integration
+* [ ] Physical hardware integration
 * [ ] SLAM
-* [ ] Autonomous navigation
 * [ ] Localization
+* [ ] Autonomous navigation
 * [ ] Obstacle avoidance
 * [ ] Interactive touchscreen application
 * [ ] Restaurant delivery workflow
@@ -282,7 +569,7 @@ This allows ROS 2 nodes to consume simulated sensor data using standard ROS 2 me
   <img src="media/panda_cad.png" width="75%">
 </p>
 
-### Simulation
+### Gazebo Simulation
 
 <p align="center">
   <img src="media/panda_simulation_1.png" width="75%">
@@ -292,11 +579,28 @@ This allows ROS 2 nodes to consume simulated sensor data using standard ROS 2 me
   <img src="media/panda_simulation_2.png" width="75%">
 </p>
 
-### RViz2 Visualization
+### RViz2
 
 <p align="center">
   <img src="media/panda_visualization.png" width="75%">
 </p>
+
+### DDR Kinematics
+
+The mathematical derivation of the differential-drive model is available in:
+
+```text
+media/DDR_kinematics.pdf
+```
+
+It covers:
+
+* Forward kinematics
+* Inverse kinematics
+* Linear velocity
+* Angular velocity
+* Wheel velocity relationships
+* Differential-drive motion equations
 
 ---
 
@@ -305,8 +609,6 @@ This allows ROS 2 nodes to consume simulated sensor data using standard ROS 2 me
 **Ahmed Gaber**
 
 Mechatronics Engineer | Robotics Software Engineer
-
-Focused on:
 
 `ROS 2` · `C++` · `Python` · `Robotics` · `Embedded Systems` · `Computer Vision` · `Autonomous Robots`
 

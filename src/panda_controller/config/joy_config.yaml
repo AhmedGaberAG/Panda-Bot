@@ -1,0 +1,14 @@
+joystick:
+  ros__parameters:
+
+    device_id: 0
+    device_name: ""
+
+    # Ignore small joystick movements around the center
+    deadzone: 0.5
+
+    # Publish repeated joystick messages at 20 Hz
+    autorepeat_rate: 20.0
+
+    sticky_buttons: false
+    coalesce_interval_ms: 1
