@@ -1,13 +1,19 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 def generate_launch_description():
 
     package_share = get_package_share_directory("panda_controller")
+    
+    use_sim_time_arg = DeclareLaunchArgument(
+        name="use_sim_time", 
+        default_value="True",
+    )
 
     twist_mux_launch = os.path.join(
         get_package_share_directory("twist_mux"),
@@ -50,7 +56,7 @@ def generate_launch_description():
         package="joy",
         executable="joy_node",
         name="joystick",
-        parameters=[joy_config],
+        parameters=[joy_config, {"use_sim_time": LaunchConfiguration("use_sim_time")}],
         output="screen",
     )
 
@@ -58,7 +64,7 @@ def generate_launch_description():
     joy_teleop = Node(
         package="joy_teleop",
         executable="joy_teleop",
-        parameters=[joy_teleop_config],
+        parameters=[joy_teleop_config, {"use_sim_time": LaunchConfiguration("use_sim_time")}],
         output="screen",
     )
 
@@ -70,16 +76,22 @@ def generate_launch_description():
             "config_topics": twist_mux_topics_config,
             "config_locks": twist_mux_locks_config,
             "config_joy": twist_mux_joy_config,
+            "use_sim_time": LaunchConfiguration("use_sim_time")
         }.items(),
     )
 
     twist_relay_node = Node(
         package="panda_controller",
         executable="twist_relay.py",
-        name="twist_relay"
+        name="twist_relay",
+        parameters=[
+            {"use_sim_time": LaunchConfiguration("use_sim_time")}
+        ],
+        output="screen",
     )
 
     return LaunchDescription([
+        use_sim_time_arg,
         joy_node,
         joy_teleop,
         twist_mux_node,
