@@ -1,8 +1,8 @@
 # 🐼 Panda-Bot
 
-**Panda-Bot** is a ROS 2-powered autonomous restaurant delivery robot designed for indoor food delivery applications.
+**Panda-Bot** is a ROS 2-powered autonomous restaurant delivery robot designed for indoor mobile robotics applications.
 
-The project combines **robot modeling, CAD integration, physics simulation, ros2_control, differential-drive kinematics, sensor simulation, visualization, and joystick teleoperation** into a mobile robotic platform.
+The project combines **CAD-based robot modeling, differential-drive control, ros2_control, odometry, sensor simulation, probabilistic motion modeling, state estimation, and localization** into a modular robotics platform.
 
 <p align="center">
   <img src="media/panda_cad.png" width="45%">
@@ -13,9 +13,9 @@ The project combines **robot modeling, CAD integration, physics simulation, ros2
 
 ## 🚀 Overview
 
-Panda-Bot is designed as an indoor mobile robot capable of transporting food and interacting with its environment.
+Panda-Bot is an indoor differential-drive mobile robot designed as a platform for autonomous restaurant delivery.
 
-The current platform includes:
+### Current capabilities
 
 * 🤖 ROS 2 robot architecture
 * 🧩 URDF/Xacro robot description
@@ -31,8 +31,13 @@ The current platform includes:
 * 🌍 Gazebo physics simulation
 * 👁️ RViz2 visualization
 * 🌉 ROS 2 ↔ Gazebo communication
+* 📊 Noisy odometry simulation
+* 📈 Kalman filtering
+* 🧮 Extended Kalman Filter using `robot_localization`
+* 🎲 Probabilistic Odometry Motion Model
+* 📍 Localization foundation
 
-The project is structured as a foundation for future **SLAM, localization, autonomous navigation, perception, and restaurant delivery applications**.
+The platform is being developed toward **SLAM, probabilistic localization, autonomous navigation, perception, and restaurant delivery**.
 
 ---
 
@@ -44,39 +49,38 @@ The project is structured as a foundation for future **SLAM, localization, auton
                          │   Mobile Platform    │
                          └──────────┬───────────┘
                                     │
-              ┌─────────────────────┼─────────────────────┐
-              │                     │                     │
-        Robot Description       Control System        Simulation
-              │                     │                     │
-       ┌──────┴──────┐       ┌──────┴──────┐       ┌──────┴──────┐
-       │ URDF/Xacro  │       │ ros2_control │       │ Gazebo Sim  │
-       │ CAD Meshes  │       │ Controllers  │       │ Physics     │
-       │ TF Frames   │       │ Hardware     │       │ Sensors     │
-       └─────────────┘       └──────┬───────┘       └─────────────┘
-                                    │
-                         ┌──────────┴──────────┐
-                         │ Differential Drive  │
-                         │                    │
-                         │ cmd_vel             │
-                         │      ↓              │
-                         │ Wheel Velocities    │
-                         │      ↓              │
-                         │ Joint States        │
-                         │      ↓              │
-                         │ Odometry + TF       │
-                         └──────────┬──────────┘
-                                    │
-                         ┌──────────┴──────────┐
-                         │ Sensors / ROS 2     │
-                         │ LiDAR • Camera • IMU│
-                         └─────────────────────┘
+             ┌──────────────────────┼──────────────────────┐
+             │                      │                      │
+       Robot Description       Control System          Sensors
+             │                      │                      │
+      ┌──────┴──────┐       ┌──────┴──────┐       ┌──────┴──────┐
+      │ URDF/Xacro  │       │ ros2_control │       │   LiDAR     │
+      │ CAD Meshes  │       │ DDR Control  │       │   Camera    │
+      │ TF Frames   │       │ Odometry     │       │   IMU       │
+      └─────────────┘       └──────┬──────┘       └──────┬──────┘
+                                   │                      │
+                                   ▼                      │
+                            Noisy Odometry                │
+                                   │                      │
+                    ┌──────────────┴──────────────┐       │
+                    │                             │       │
+                    ▼                             ▼       │
+             Kalman Filter              Odometry Motion   │
+                    │                         Model       │
+                    ▼                             │       │
+              State Estimate                    ▼       │
+                    │                       Particles     │
+                    │                             │       │
+                    └──────────────┬──────────────┘       │
+                                   ▼                      ▼
+                              Localization           Sensor Fusion
 ```
 
 ---
 
 ## 📐 Differential-Drive Kinematics
 
-The Panda-Bot uses a two-wheel differential-drive configuration with:
+Panda-Bot uses a differential-drive configuration with:
 
 ```text
 Wheel Radius       = 0.065 m
@@ -85,101 +89,78 @@ Wheel Separation   = 0.37 m
 
 ### Forward Kinematics
 
-Wheel angular velocities are converted into robot linear and angular velocity:
+```text
+v     = r/2 · (φR + φL)
 
-$$
-v = \frac{r}{2}(\phi_R + \phi_L)
-$$
-
-$$
-\omega = \frac{r}{L}(\phi_R - \phi_L)
-$$
+ω     = r/L · (φR - φL)
+```
 
 Where:
 
 * `r` = wheel radius
 * `L` = wheel separation
-* `φ_R` = right wheel angular velocity
-* `φ_L` = left wheel angular velocity
-* `v` = robot linear velocity
-* `ω` = robot angular velocity
+* `φR` = right wheel angular velocity
+* `φL` = left wheel angular velocity
+* `v` = linear velocity
+* `ω` = angular velocity
 
 ### Inverse Kinematics
 
-Robot velocity commands are converted into wheel angular velocities:
+```text
+φR = v/r + Lω/(2r)
 
-$$
-\phi_R = \frac{v}{r} + \frac{L\omega}{2r}
-$$
+φL = v/r - Lω/(2r)
+```
 
-$$
-\phi_L = \frac{v}{r} - \frac{L\omega}{2r}
-$$
+The complete mathematical derivation is available in:
 
-The complete mathematical derivation is documented in:
-
-**`media/DDR_kinematics.pdf`**
+```text
+media/DDR_kinematics.pdf
+```
 
 ---
 
 ## ⚙️ ros2_control
 
-The robot uses `ros2_control` to separate the control layer from the robot hardware/simulation interface.
+The robot uses `ros2_control` to separate the control layer from the robot hardware and simulation interface.
 
 ```text
-                 ROS 2
-                   │
-                   ▼
-          ┌─────────────────┐
-          │ Controller      │
-          │ Manager         │
-          └────────┬────────┘
-                   │
-          ┌────────┴────────┐
-          │                 │
-          ▼                 ▼
-   panda_controller   simple_velocity_controller
-   DiffDriveController    JointGroupVelocity
-          │                 │
-          └────────┬────────┘
-                   ▼
-             Wheel Joints
-                   │
-                   ▼
-          ros2_control Hardware
-                   │
-                   ▼
-             Gazebo / Robot
-```
-
-The robot defines velocity command interfaces and position/velocity state interfaces for:
-
-```text
-wheel_right_joint
-wheel_left_joint
-```
-
-The simulation currently uses:
-
-```text
-ign_ros2_control/IgnitionSystem
+                     ROS 2
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Controller      │
+              │ Manager         │
+              └────────┬────────┘
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+             ▼                   ▼
+      DiffDriveController   JointGroupVelocity
+             │                   │
+             └─────────┬─────────┘
+                       ▼
+                  Wheel Joints
+                       │
+                       ▼
+               Gazebo / Hardware
 ```
 
 ---
 
 ## 🎛️ Differential-Drive Controllers
 
-The project contains two control approaches.
+Two control approaches are available.
 
 ### Standard Controller
 
-The production-oriented approach uses:
+Uses:
 
 ```text
 diff_drive_controller/DiffDriveController
 ```
 
-It provides:
+Provides:
 
 * `cmd_vel` processing
 * Differential-drive kinematics
@@ -187,11 +168,10 @@ It provides:
 * Odometry
 * Odometry TF
 * Velocity limiting
-* Wheel data publishing
 
 ### Custom Controller
 
-A custom Python controller is also included for understanding the internal mathematics of differential-drive control.
+A Python implementation is provided to expose the internal DDR mathematics:
 
 ```text
 TwistStamped
@@ -218,15 +198,7 @@ Forward Kinematics
 Odometry + TF
 ```
 
-The custom controller implements:
-
-* Inverse DDR kinematics
-* Forward DDR kinematics
-* Wheel velocity estimation
-* Differential-drive odometry
-* `odom → base_footprint` TF broadcasting
-
-The controller can be selected at launch time:
+Launch:
 
 ```bash
 ros2 launch panda_controller controller.launch.py
@@ -239,20 +211,20 @@ ros2 launch panda_controller controller.launch.py \
   use_simple_controller:=true
 ```
 
-Standard `DiffDriveController`:
+Standard controller:
 
 ```bash
 ros2 launch panda_controller controller.launch.py \
   use_simple_controller:=false
 ```
 
-> The two controllers are alternative control paths and should not control the same wheel joints simultaneously.
+> The two controllers are alternative control paths and should not command the same wheel joints simultaneously.
 
 ---
 
-## 🧭 Odometry & TF
+## 🧭 Odometry
 
-The custom controller calculates the robot pose from wheel displacement.
+Wheel encoder measurements are converted into robot motion using differential-drive forward kinematics.
 
 ```text
 Wheel Positions
@@ -262,6 +234,10 @@ Wheel Positions
       │
       ▼
 Forward Kinematics
+      │
+      ├──────────────► Linear Velocity
+      │
+      ├──────────────► Angular Velocity
       │
       ▼
 Δs , Δθ
@@ -274,91 +250,179 @@ x , y , θ
       └──────────────► odom → base_footprint
 ```
 
-The odometry message contains:
-
-* Position
-* Orientation
-* Linear velocity
-* Angular velocity
-
-The TF transform provides the spatial relationship:
+The project also includes a **noisy odometry controller** that introduces encoder uncertainty to simulate realistic sensor behavior.
 
 ```text
-odom
-  │
-  ▼
-base_footprint
-  │
-  ▼
-base_link
-  ├── wheel_right_link
-  ├── wheel_left_link
-  ├── laser_link
-  ├── camera_link
-  └── imu_link
+Joint States
+     │
+     ▼
+Encoder Noise
+     │
+     ▼
+Noisy Wheel Measurements
+     │
+     ▼
+Differential-Drive Odometry
+     │
+     ▼
+/panda_controller/odom_noisy
 ```
 
 ---
 
-## 🎮 Joystick Teleoperation
+## 📊 State Estimation
 
-The robot supports joystick control through:
+### Kalman Filter
+
+A simple Kalman Filter implementation is included for studying probabilistic state estimation.
+
+It demonstrates the two fundamental stages:
 
 ```text
-joy
-  │
-  ▼
-joy_teleop
-  │
-  ▼
-TwistStamped
-  │
-  ▼
-panda_controller/cmd_vel
-  │
-  ▼
-Differential-Drive Controller
+Prediction
+    │
+    ▼
+Measurement Update
+    │
+    ▼
+Filtered Estimate
 ```
 
-Launch joystick teleoperation with:
+The filter combines motion information with IMU measurements to reduce uncertainty.
+
+---
+
+## 🧮 Extended Kalman Filter
+
+The project also uses the ROS 2 `robot_localization` package for practical sensor fusion.
+
+Current configuration operates in planar mode:
+
+```text
+two_d_mode: true
+```
+
+The EKF combines:
+
+```text
+Noisy Wheel Odometry
+        │
+        ├──────────────┐
+        │              │
+        ▼              ▼
+   Prediction       IMU Data
+        │              │
+        └──────┬───────┘
+               ▼
+        Extended Kalman
+             Filter
+               │
+               ▼
+        Estimated State
+```
+
+Launch the localization pipeline with:
 
 ```bash
-ros2 launch panda_controller joystick_teleop.launch.py
+ros2 launch panda_localization local_localization.launch.py
 ```
 
-The current configuration uses:
+Main configuration:
 
-* Right analog stick → linear velocity
-* Left analog stick → angular velocity
-* R1 → deadman switch
-* 20 Hz joystick autorepeat
+```text
+panda_localization/
+├── config/
+│   └── ekf.yaml
+├── launch/
+│   └── local_localization.launch.py
+└── panda_localization/
+    ├── imu_republisher.py
+    ├── kalman_filter.py
+    └── odometry_motion_model.py
+```
 
 ---
 
-## 🤖 Robot Description
+## 🎲 Odometry Motion Model
 
-The Panda-Bot model is built using **URDF/Xacro** and includes:
+Panda-Bot also implements a probabilistic odometry motion model used as the **prediction component of a particle-filter-based localization system**.
 
-* Differential-drive wheels
-* Four caster wheels
-* LiDAR
-* RGB camera
-* IMU
-* Camera optical frame
-* `base_footprint`
-* `base_link`
-* Wheel and sensor TF frames
-* CAD-derived STL meshes
-* Gazebo simulation properties
-* ros2_control interfaces
-
-Main Xacro files:
+The model decomposes robot motion into:
 
 ```text
-panda.urdf.xacro
-properties.xacro
-gazebo.xacro
-ros2_control.xacro
+Δrot1  →  Δtrans  →  Δrot2
+```
+
+where:
+
+* `Δrot1` = initial rotation
+* `Δtrans` = translation
+* `Δrot2` = final rotation
+
+The motion is modeled probabilistically because odometry is affected by:
+
+* Encoder noise
+* Wheel slip
+* Wheel radius uncertainty
+* Wheel separation uncertainty
+* Mechanical errors
+* Accumulated motion error
+
+The model uses noise parameters:
+
+```text
+α1
+α2
+α3
+α4
+```
+
+and generates multiple possible robot poses.
+
+```text
+                 Odometry
+                    │
+                    ▼
+            Motion Decomposition
+                    │
+          ┌─────────┼─────────┐
+          ▼         ▼         ▼
+       Δrot1      Δtrans    Δrot2
+          │         │         │
+          └─────────┼─────────┘
+                    ▼
+              Noise Model
+                    │
+                    ▼
+             Random Samples
+                    │
+                    ▼
+          ● ● ● ● ● ● ● ●
+        ● ● ● ● ● ● ● ● ●
+          ● ● ● ● ● ● ● ●
+                    │
+                    ▼
+              Pose Array
+```
+
+The implementation publishes the generated poses as:
+
+```text
+/odometry_motion_model/samples
+```
+
+with:
+
+```text
+300 samples
+```
+
+by default.
+
+The mathematical explanation is documented in:
+
+```text
+media/OdometryMotionModel.pdf
 ```
 
 ---
@@ -367,7 +431,7 @@ ros2_control.xacro
 
 ### LiDAR
 
-A GPU-based 2D LiDAR is simulated for indoor perception.
+A simulated 2D LiDAR is used for indoor perception.
 
 ```text
 Samples:       360
@@ -376,23 +440,21 @@ Range:         0.12 – 12.0 m
 Noise:         Gaussian
 ```
 
-ROS 2 topic:
+Topic:
 
 ```text
 /scan
 ```
 
-### Camera
-
-The robot includes a simulated RGB camera.
+### RGB Camera
 
 ```text
-Resolution:    640 × 480
-Update Rate:   30 Hz
+Resolution:     640 × 480
+Update Rate:    30 Hz
 Horizontal FOV: ~60°
 ```
 
-ROS 2 topic:
+Topic:
 
 ```text
 /camera/image
@@ -400,13 +462,11 @@ ROS 2 topic:
 
 ### IMU
 
-The simulated IMU operates at:
-
 ```text
-100 Hz
+Update Rate: 100 Hz
 ```
 
-ROS 2 topic:
+Topic:
 
 ```text
 /imu/out
@@ -431,13 +491,13 @@ The simulation includes:
 * ROS 2 ↔ Gazebo bridges
 * Simulation time
 
-Launch the default simulation:
+Launch:
 
 ```bash
 ros2 launch panda_description gazebo.launch.py
 ```
 
-Launch a specific world:
+Specific world:
 
 ```bash
 ros2 launch panda_description gazebo.launch.py \
@@ -446,20 +506,19 @@ ros2 launch panda_description gazebo.launch.py \
 
 ---
 
-## 👁️ RViz2 Visualization
+## 👁️ RViz2
 
-RViz2 is configured for:
+RViz2 is used for:
 
-* Robot model visualization
+* Robot visualization
 * TF inspection
+* LiDAR visualization
 * Sensor frames
-* Laser scan visualization
-* Navigation visualization
 * Robot pose
-* Initial pose
-* Coordinate frames
+* Localization visualization
+* Particle visualization
 
-Launch RViz2:
+Launch:
 
 ```bash
 ros2 launch panda_description display.launch.py
@@ -467,9 +526,9 @@ ros2 launch panda_description display.launch.py
 
 ---
 
-## 🌉 ROS 2 ↔ Gazebo Bridge
+## 🌉 ROS 2 ↔ Gazebo
 
-`ros_gz_bridge` is used to exchange simulation data between Gazebo and ROS 2.
+`ros_gz_bridge` connects Gazebo simulation data with ROS 2.
 
 Current interfaces include:
 
@@ -480,8 +539,6 @@ Current interfaces include:
 /imu/out
 ```
 
-This allows ROS 2 nodes to consume simulated sensor data using standard ROS 2 message types.
-
 ---
 
 ## 📁 Repository Structure
@@ -490,6 +547,9 @@ This allows ROS 2 nodes to consume simulated sensor data using standard ROS 2 me
 panda_ws/
 ├── media/
 │   ├── DDR_kinematics.pdf
+│   ├── OdometryMotionModel.pdf
+│   ├── Probability.pdf
+│   ├── BayesRule and SensorFusion(KF and EKF).pdf
 │   ├── panda_cad.png
 │   ├── panda_simulation_1.png
 │   ├── panda_simulation_2.png
@@ -498,31 +558,31 @@ panda_ws/
 ├── src/
 │   ├── panda_controller/
 │   │   ├── config/
-│   │   │   ├── joy_config.yaml
-│   │   │   ├── joy_teleop.yaml
-│   │   │   └── panda_controllers.yaml
 │   │   ├── launch/
-│   │   │   ├── controller.launch.py
-│   │   │   └── joystick_teleop.launch.py
 │   │   └── panda_controller/
-│   │       └── simple_controller.py
+│   │       ├── simple_controller.py
+│   │       └── noisy_controller.py
 │   │
 │   ├── panda_description/
 │   │   ├── config/
-│   │   │   └── gz_bridge.yaml
 │   │   ├── launch/
-│   │   │   ├── display.launch.py
-│   │   │   └── gazebo.launch.py
 │   │   ├── meshes/
 │   │   ├── rviz/
 │   │   ├── urdf/
-│   │   │   ├── panda.urdf.xacro
-│   │   │   ├── properties.xacro
-│   │   │   ├── gazebo.xacro
-│   │   │   └── ros2_control.xacro
 │   │   └── worlds/
 │   │
-│   └── panda_hardware/
+│   ├── panda_hardware/
+│   │
+│   └── panda_localization/
+│       ├── config/
+│       │   ├── ekf.yaml
+│       │   └── odometry_motion_model.rviz
+│       ├── launch/
+│       │   └── local_localization.launch.py
+│       └── panda_localization/
+│           ├── imu_republisher.py
+│           ├── kalman_filter.py
+│           └── odometry_motion_model.py
 │
 ├── .gitignore
 └── README.md
@@ -530,7 +590,9 @@ panda_ws/
 
 ---
 
-## 🗺️ Project Roadmap
+## 🗺️ Roadmap
+
+### Completed
 
 * [x] Robot CAD model
 * [x] URDF/Xacro robot description
@@ -539,9 +601,10 @@ panda_ws/
 * [x] DDR forward kinematics
 * [x] DDR inverse kinematics
 * [x] ros2_control integration
-* [x] Standard DiffDriveController configuration
+* [x] Standard DiffDriveController
 * [x] Custom differential-drive controller
 * [x] Wheel-based odometry
+* [x] Noisy odometry simulation
 * [x] `odom → base_footprint` TF
 * [x] Joystick teleoperation
 * [x] Gazebo simulation
@@ -550,14 +613,41 @@ panda_ws/
 * [x] Camera simulation
 * [x] IMU simulation
 * [x] ROS 2 ↔ Gazebo bridge
-* [ ] Physical hardware integration
+* [x] Basic Kalman Filter implementation
+* [x] `robot_localization` EKF configuration
+* [x] Odometry Motion Model
+* [x] Probabilistic pose sampling
+
+### In Progress
+
+* [ ] Particle-filter localization
+* [ ] LiDAR measurement model
+* [ ] Particle weighting
+* [ ] Particle resampling
 * [ ] SLAM
-* [ ] Localization
 * [ ] Autonomous navigation
 * [ ] Obstacle avoidance
+
+### Future
+
+* [ ] Physical hardware integration
 * [ ] Interactive touchscreen application
 * [ ] Restaurant delivery workflow
+* [ ] Computer vision perception
 * [ ] Full autonomous delivery system
+
+---
+
+## 📚 Learning Resources
+
+The `media/` directory contains mathematical notes and references developed alongside the project:
+
+| Document                                     | Topic                               |
+| -------------------------------------------- | ----------------------------------- |
+| `DDR_kinematics.pdf`                         | Differential-drive kinematics       |
+| `Probability.pdf`                            | Probability fundamentals            |
+| `BayesRule and SensorFusion(KF and EKF).pdf` | Bayes, Kalman Filter & EKF          |
+| `OdometryMotionModel.pdf`                    | Probabilistic odometry motion model |
 
 ---
 
@@ -585,23 +675,6 @@ panda_ws/
   <img src="media/panda_visualization.png" width="75%">
 </p>
 
-### DDR Kinematics
-
-The mathematical derivation of the differential-drive model is available in:
-
-```text
-media/DDR_kinematics.pdf
-```
-
-It covers:
-
-* Forward kinematics
-* Inverse kinematics
-* Linear velocity
-* Angular velocity
-* Wheel velocity relationships
-* Differential-drive motion equations
-
 ---
 
 ## 👨‍💻 Author
@@ -616,5 +689,5 @@ Mechatronics Engineer | Robotics Software Engineer
 
 ## 📄 License
 
-This project is currently intended for educational, portfolio, and robotics development purposes.
+This project is intended for educational, portfolio, and robotics development purposes.
 
