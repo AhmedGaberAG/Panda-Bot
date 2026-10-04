@@ -1,8 +1,8 @@
 # 🐼 Panda-Bot
 
-**Panda-Bot** is a ROS 2-powered autonomous restaurant delivery robot designed for indoor mobile robotics applications.
+**Panda-Bot** is a ROS 2-powered autonomous restaurant delivery robot designed for indoor mobile robotics.
 
-The project combines **CAD-based robot modeling, differential-drive control, ros2_control, odometry, sensor simulation, probabilistic motion modeling, state estimation, and localization** into a modular robotics platform.
+The project focuses on building a complete mobile robotics stack from **robot modeling and differential-drive control to odometry, sensor simulation, state estimation, probabilistic localization, and autonomous navigation**.
 
 <p align="center">
   <img src="media/panda_cad.png" width="45%">
@@ -13,86 +13,92 @@ The project combines **CAD-based robot modeling, differential-drive control, ros
 
 ## 🚀 Overview
 
-Panda-Bot is an indoor differential-drive mobile robot designed as a platform for autonomous restaurant delivery.
+Panda-Bot is a cylindrical differential-drive mobile robot designed as a foundation for autonomous restaurant delivery.
 
 ### Current capabilities
 
-* 🤖 ROS 2 robot architecture
+* 🤖 ROS 2 mobile robot architecture
 * 🧩 URDF/Xacro robot description
-* ⚙️ ros2_control integration
+* 🛠️ CAD-based robot model
+* ⚙️ `ros2_control` integration
 * 🚗 Differential-drive control
 * 📐 Forward & inverse DDR kinematics
 * 🧭 Wheel-based odometry
-* 🔄 TF2 frame broadcasting
+* 🔄 TF2 transforms
 * 🎮 Joystick teleoperation
-* 📡 LiDAR simulation
+* 📡 2D LiDAR simulation
 * 📷 RGB camera simulation
 * 🧭 IMU simulation
 * 🌍 Gazebo physics simulation
 * 👁️ RViz2 visualization
 * 🌉 ROS 2 ↔ Gazebo communication
 * 📊 Noisy odometry simulation
-* 📈 Kalman filtering
-* 🧮 Extended Kalman Filter using `robot_localization`
-* 🎲 Probabilistic Odometry Motion Model
-* 📍 Localization foundation
+* 📈 Kalman Filter implementation
+* 🧮 Extended Kalman Filter with `robot_localization`
+* 🎲 Probabilistic odometry motion model
+* 📍 Probabilistic pose sampling
+* 🛡️ LiDAR-based safety stop
+* 🧹 LiDAR self-filtering
+* 🔎 Laser scan range filtering
 
-The platform is being developed toward **SLAM, probabilistic localization, autonomous navigation, perception, and restaurant delivery**.
+The platform is being developed toward **SLAM, particle-filter localization, autonomous navigation, perception, and restaurant delivery**.
 
 ---
 
 ## 🧠 System Architecture
 
 ```text
-                         ┌──────────────────────┐
-                         │      Panda-Bot       │
-                         │   Mobile Platform    │
-                         └──────────┬───────────┘
+                         ┌─────────────────────┐
+                         │      Panda-Bot      │
+                         │   Mobile Platform   │
+                         └──────────┬──────────┘
                                     │
-             ┌──────────────────────┼──────────────────────┐
-             │                      │                      │
-       Robot Description       Control System          Sensors
-             │                      │                      │
-      ┌──────┴──────┐       ┌──────┴──────┐       ┌──────┴──────┐
-      │ URDF/Xacro  │       │ ros2_control │       │   LiDAR     │
-      │ CAD Meshes  │       │ DDR Control  │       │   Camera    │
-      │ TF Frames   │       │ Odometry     │       │   IMU       │
-      └─────────────┘       └──────┬──────┘       └──────┬──────┘
-                                   │                      │
-                                   ▼                      │
-                            Noisy Odometry                │
-                                   │                      │
-                    ┌──────────────┴──────────────┐       │
-                    │                             │       │
-                    ▼                             ▼       │
-             Kalman Filter              Odometry Motion   │
-                    │                         Model       │
-                    ▼                             │       │
-              State Estimate                    ▼       │
-                    │                       Particles     │
-                    │                             │       │
-                    └──────────────┬──────────────┘       │
-                                   ▼                      ▼
-                              Localization           Sensor Fusion
+          ┌─────────────────────────┼─────────────────────────┐
+          │                         │                         │
+          ▼                         ▼                         ▼
+   Robot Description          Control & Odometry          Sensors
+          │                         │                         │
+    URDF / Xacro              ros2_control                  LiDAR
+    CAD Meshes                DDR Control                   Camera
+    TF Frames                 Wheel Odometry                IMU
+                                    │
+                                    ▼
+                             Noisy Odometry
+                                    │
+                     ┌──────────────┴──────────────┐
+                     ▼                             ▼
+              State Estimation              Motion Modeling
+                     │                             │
+                Kalman Filter              Δrot1 / Δtrans / Δrot2
+                     │                             │
+                     ▼                             ▼
+                   EKF                     Probabilistic Samples
+                     │                             │
+                     └──────────────┬──────────────┘
+                                    ▼
+                              Localization
+                                    │
+                                    ▼
+                         SLAM / Navigation
 ```
 
 ---
 
-## 📐 Differential-Drive Kinematics
+# 📐 Differential-Drive Kinematics
 
-Panda-Bot uses a differential-drive configuration with:
+Panda-Bot uses a differential-drive configuration.
 
 ```text
-Wheel Radius       = 0.065 m
-Wheel Separation   = 0.37 m
+Wheel Radius      = 0.065 m
+Wheel Separation  = 0.37 m
 ```
 
 ### Forward Kinematics
 
 ```text
-v     = r/2 · (φR + φL)
+v = r/2 · (φR + φL)
 
-ω     = r/L · (φR - φL)
+ω = r/L · (φR - φL)
 ```
 
 Where:
@@ -112,7 +118,7 @@ Where:
 φL = v/r - Lω/(2r)
 ```
 
-The complete mathematical derivation is available in:
+A complete mathematical derivation is available in:
 
 ```text
 media/DDR_kinematics.pdf
@@ -120,37 +126,33 @@ media/DDR_kinematics.pdf
 
 ---
 
-## ⚙️ ros2_control
+# ⚙️ ros2_control
 
-The robot uses `ros2_control` to separate the control layer from the robot hardware and simulation interface.
+Panda-Bot uses `ros2_control` to separate the robot control layer from the simulated hardware interface.
 
 ```text
-                     ROS 2
-                       │
-                       ▼
-              ┌─────────────────┐
-              │ Controller      │
-              │ Manager         │
-              └────────┬────────┘
-                       │
-             ┌─────────┴─────────┐
-             │                   │
-             ▼                   ▼
-      DiffDriveController   JointGroupVelocity
-             │                   │
-             └─────────┬─────────┘
-                       ▼
-                  Wheel Joints
-                       │
-                       ▼
-               Gazebo / Hardware
+                         ROS 2
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Controller      │
+                  │ Manager         │
+                  └────────┬────────┘
+                           │
+             ┌─────────────┴─────────────┐
+             │                           │
+             ▼                           ▼
+      DiffDriveController       JointGroupVelocity
+             │                           │
+             └─────────────┬─────────────┘
+                           ▼
+                      Wheel Joints
+                           │
+                           ▼
+                    Gazebo / Hardware
 ```
 
----
-
-## 🎛️ Differential-Drive Controllers
-
-Two control approaches are available.
+Two differential-drive control paths are available.
 
 ### Standard Controller
 
@@ -171,30 +173,30 @@ Provides:
 
 ### Custom Controller
 
-A Python implementation is provided to expose the internal DDR mathematics:
+A Python implementation exposes the internal DDR mathematics:
 
 ```text
-TwistStamped
-     │
-     ▼
+Twist
+ │
+ ▼
 Inverse Kinematics
-     │
-     ▼
+ │
+ ▼
 Wheel Velocities
-     │
-     ▼
+ │
+ ▼
 JointGroupVelocityController
-     │
-     ▼
+ │
+ ▼
 Wheel Joints
-     │
-     ▼
+ │
+ ▼
 Joint States
-     │
-     ▼
+ │
+ ▼
 Forward Kinematics
-     │
-     ▼
+ │
+ ▼
 Odometry + TF
 ```
 
@@ -222,9 +224,9 @@ ros2 launch panda_controller controller.launch.py \
 
 ---
 
-## 🧭 Odometry
+# 🧭 Odometry
 
-Wheel encoder measurements are converted into robot motion using differential-drive forward kinematics.
+Wheel joint positions are converted into robot motion using differential-drive forward kinematics.
 
 ```text
 Wheel Positions
@@ -250,7 +252,16 @@ x , y , θ
       └──────────────► odom → base_footprint
 ```
 
-The project also includes a **noisy odometry controller** that introduces encoder uncertainty to simulate realistic sensor behavior.
+The custom controller uses the midpoint orientation when integrating the robot pose:
+
+```text
+θmid = θ + Δθ/2
+
+x += Δs · cos(θmid)
+y += Δs · sin(θmid)
+```
+
+A noisy odometry controller is also included to simulate realistic wheel encoder uncertainty.
 
 ```text
 Joint States
@@ -270,13 +281,11 @@ Differential-Drive Odometry
 
 ---
 
-## 📊 State Estimation
+# 📊 State Estimation
 
-### Kalman Filter
+## Kalman Filter
 
-A simple Kalman Filter implementation is included for studying probabilistic state estimation.
-
-It demonstrates the two fundamental stages:
+A basic Kalman Filter implementation is included for studying probabilistic state estimation.
 
 ```text
 Prediction
@@ -288,40 +297,36 @@ Measurement Update
 Filtered Estimate
 ```
 
-The filter combines motion information with IMU measurements to reduce uncertainty.
+The project also contains supporting material covering probability, Bayes' rule, Kalman filtering, and sensor fusion.
 
 ---
 
 ## 🧮 Extended Kalman Filter
 
-The project also uses the ROS 2 `robot_localization` package for practical sensor fusion.
+`robot_localization` is used for practical sensor fusion.
 
-Current configuration operates in planar mode:
+The current configuration operates in planar mode:
 
-```text
+```yaml
 two_d_mode: true
 ```
 
-The EKF combines:
+The localization pipeline combines:
 
 ```text
 Noisy Wheel Odometry
         │
-        ├──────────────┐
-        │              │
-        ▼              ▼
-   Prediction       IMU Data
-        │              │
-        └──────┬───────┘
-               ▼
-        Extended Kalman
-             Filter
-               │
-               ▼
-        Estimated State
+        ▼
+   EKF Prediction
+        ▲
+        │
+     IMU Data
+        │
+        ▼
+ Estimated Robot State
 ```
 
-Launch the localization pipeline with:
+Launch:
 
 ```bash
 ros2 launch panda_localization local_localization.launch.py
@@ -343,14 +348,14 @@ panda_localization/
 
 ---
 
-## 🎲 Odometry Motion Model
+# 🎲 Probabilistic Odometry Motion Model
 
-Panda-Bot also implements a probabilistic odometry motion model used as the **prediction component of a particle-filter-based localization system**.
+Panda-Bot implements a probabilistic odometry motion model for the prediction stage of particle-filter-based localization.
 
-The model decomposes robot motion into:
+The robot motion is decomposed into:
 
 ```text
-Δrot1  →  Δtrans  →  Δrot2
+Δrot1 → Δtrans → Δrot2
 ```
 
 where:
@@ -359,16 +364,7 @@ where:
 * `Δtrans` = translation
 * `Δrot2` = final rotation
 
-The motion is modeled probabilistically because odometry is affected by:
-
-* Encoder noise
-* Wheel slip
-* Wheel radius uncertainty
-* Wheel separation uncertainty
-* Mechanical errors
-* Accumulated motion error
-
-The model uses noise parameters:
+Odometry uncertainty is modeled using:
 
 ```text
 α1
@@ -377,49 +373,56 @@ The model uses noise parameters:
 α4
 ```
 
-and generates multiple possible robot poses.
+These parameters represent motion-dependent noise caused by factors such as:
+
+* Encoder uncertainty
+* Wheel slip
+* Wheel radius errors
+* Wheel separation errors
+* Mechanical inaccuracies
+* Accumulated odometry drift
+
+The model generates multiple possible poses:
 
 ```text
-                 Odometry
-                    │
-                    ▼
-            Motion Decomposition
-                    │
-          ┌─────────┼─────────┐
-          ▼         ▼         ▼
-       Δrot1      Δtrans    Δrot2
-          │         │         │
-          └─────────┼─────────┘
-                    ▼
-              Noise Model
-                    │
-                    ▼
-             Random Samples
-                    │
-                    ▼
+                  Odometry
+                     │
+                     ▼
+             Motion Decomposition
+                     │
+           ┌─────────┼─────────┐
+           ▼         ▼         ▼
+        Δrot1      Δtrans    Δrot2
+           │         │         │
+           └─────────┼─────────┘
+                     ▼
+                Noise Model
+                     │
+                     ▼
+              Random Sampling
+                     │
+                     ▼
           ● ● ● ● ● ● ● ●
         ● ● ● ● ● ● ● ● ●
           ● ● ● ● ● ● ● ●
-                    │
-                    ▼
-              Pose Array
+                     │
+                     ▼
+                Pose Samples
 ```
 
-The implementation publishes the generated poses as:
+The generated samples are published on:
 
 ```text
 /odometry_motion_model/samples
 ```
 
-with:
+Default number of samples:
 
 ```text
-300 samples
+300
 ```
 
-by default.
-
-The mathematical explanation is documented in:
+Mathematical documentation:
 
 ```text
 media/OdometryMotionModel.pdf
@@ -427,31 +430,113 @@ media/OdometryMotionModel.pdf
 
 ---
 
-## 📡 Sensor Simulation
+# 📡 LiDAR & Sensor Processing
 
-### LiDAR
+Panda-Bot uses a simulated 2D GPU LiDAR.
 
-A simulated 2D LiDAR is used for indoor perception.
+### LiDAR configuration
 
 ```text
 Samples:       360
-Update Rate:   5 Hz
+Configured Rate: 10 Hz
 Range:         0.12 – 12.0 m
 Noise:         Gaussian
 ```
 
-Topic:
+Raw topic:
 
 ```text
 /scan
 ```
 
-### RGB Camera
+The LiDAR processing pipeline is:
 
 ```text
-Resolution:     640 × 480
-Update Rate:    30 Hz
-Horizontal FOV: ~60°
+                         /scan
+                           │
+                           ▼
+                 ┌───────────────────┐
+                 │  Scan Self Filter │
+                 │  Robot Geometry   │
+                 └─────────┬─────────┘
+                           │
+                           ▼
+                  /scan_self_filtered
+                           │
+                           ▼
+                 ┌───────────────────┐
+                 │   laser_filters   │
+                 │    Range Filter   │
+                 └─────────┬─────────┘
+                           │
+                           ▼
+                    /scan_filtered
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+         Safety Stop      SLAM         Nav2
+```
+
+### LiDAR Self-Filtering
+
+`scan_self_filter.py` removes measurements caused by the robot's own cylindrical body.
+
+The filter uses the actual robot geometry:
+
+```text
+Robot Radius = 0.25 m
+LiDAR X      = 0.175 m
+LiDAR Y      = 0.0 m
+```
+
+Instead of removing a fixed angular region, the expected intersection between each laser ray and the robot surface is calculated geometrically.
+
+A measurement is removed only when it matches the calculated robot surface within a small tolerance.
+
+This preserves nearby external obstacles, including obstacles very close to the robot.
+
+### Safety Stop
+
+The `safety_stop` node analyzes `/scan_filtered` and provides three states:
+
+```text
+FREE
+  │
+  │ distance > 1.2 m
+  ▼
+WARNING
+  │
+  │ distance ≤ 0.8 m
+  ▼
+DANGER
+```
+
+Thresholds:
+
+```text
+Warning = 1.2 m
+Danger  = 0.8 m
+```
+
+The node publishes:
+
+```text
+/safety_stop
+/zones
+```
+
+and integrates with joystick speed control through `twist_mux`.
+
+---
+
+# 📷 Camera
+
+The simulated RGB camera provides:
+
+```text
+Resolution:      640 × 480
+Update Rate:     30 Hz
+Horizontal FOV:  ~60°
 ```
 
 Topic:
@@ -460,7 +545,13 @@ Topic:
 /camera/image
 ```
 
-### IMU
+The camera provides the foundation for future computer-vision perception.
+
+---
+
+# 🧭 IMU
+
+The simulated IMU operates at:
 
 ```text
 Update Rate: 100 Hz
@@ -472,21 +563,23 @@ Topic:
 /imu/out
 ```
 
+The IMU is used as an additional source of motion information for state estimation and sensor fusion.
+
 ---
 
-## 🌍 Gazebo Simulation
+# 🌍 Gazebo Simulation
 
-Panda-Bot uses **Gazebo Sim** for physics-based simulation.
+Panda-Bot uses **Gazebo Sim / Ignition Gazebo** for physics-based simulation.
 
 The simulation includes:
 
 * Robot spawning
-* Custom worlds
+* Custom environments
 * Wheel friction
 * Physics parameters
-* ros2_control
+* `ros2_control`
 * LiDAR
-* Camera
+* RGB camera
 * IMU
 * ROS 2 ↔ Gazebo bridges
 * Simulation time
@@ -506,7 +599,7 @@ ros2 launch panda_description gazebo.launch.py \
 
 ---
 
-## 👁️ RViz2
+# 👁️ RViz2
 
 RViz2 is used for:
 
@@ -515,8 +608,10 @@ RViz2 is used for:
 * LiDAR visualization
 * Sensor frames
 * Robot pose
-* Localization visualization
-* Particle visualization
+* Odometry
+* Localization
+* Probabilistic pose samples
+* Safety zones
 
 Launch:
 
@@ -526,11 +621,54 @@ ros2 launch panda_description display.launch.py
 
 ---
 
-## 🌉 ROS 2 ↔ Gazebo
+# 🎮 Joystick Teleoperation
 
-`ros_gz_bridge` connects Gazebo simulation data with ROS 2.
+The robot supports joystick teleoperation through:
 
-Current interfaces include:
+```text
+Joystick
+   │
+   ▼
+joy_node
+   │
+   ▼
+joy_teleop
+   │
+   ▼
+input_joy/cmd_vel_stamped
+   │
+   ▼
+twist_mux
+   │
+   ├──────────────► Safety Lock
+   │
+   ▼
+panda_controller/cmd_vel_unstamped
+   │
+   ▼
+Twist Relay
+   │
+   ▼
+panda_controller/cmd_vel
+```
+
+The joystick uses an **R1 deadman switch** to enable motion commands.
+
+Launch:
+
+```bash
+ros2 launch panda_controller joystick_teleop.launch.py
+```
+
+The architecture also allows higher-priority safety commands to override joystick velocity commands.
+
+---
+
+# 🌉 ROS 2 ↔ Gazebo
+
+Gazebo sensor and simulation data are connected to ROS 2 through the Gazebo ROS bridge.
+
+Main interfaces include:
 
 ```text
 /clock
@@ -539,9 +677,11 @@ Current interfaces include:
 /imu/out
 ```
 
+This allows the same ROS 2 nodes to process simulated sensor data similarly to real hardware.
+
 ---
 
-## 📁 Repository Structure
+# 📁 Repository Structure
 
 ```text
 panda_ws/
@@ -558,10 +698,19 @@ panda_ws/
 ├── src/
 │   ├── panda_controller/
 │   │   ├── config/
+│   │   │   ├── joy_config.yaml
+│   │   │   ├── joy_teleop.yaml
+│   │   │   ├── panda_controllers.yaml
+│   │   │   ├── twist_mux_joy.yaml
+│   │   │   ├── twist_mux_locks.yaml
+│   │   │   └── twist_mux_topics.yaml
 │   │   ├── launch/
+│   │   │   ├── controller.launch.py
+│   │   │   └── joystick_teleop.launch.py
 │   │   └── panda_controller/
 │   │       ├── simple_controller.py
-│   │       └── noisy_controller.py
+│   │       ├── noisy_controller.py
+│   │       └── twist_relay.py
 │   │
 │   ├── panda_description/
 │   │   ├── config/
@@ -573,16 +722,25 @@ panda_ws/
 │   │
 │   ├── panda_hardware/
 │   │
-│   └── panda_localization/
+│   ├── panda_localization/
+│   │   ├── config/
+│   │   │   ├── ekf.yaml
+│   │   │   └── odometry_motion_model.rviz
+│   │   ├── launch/
+│   │   │   └── local_localization.launch.py
+│   │   └── panda_localization/
+│   │       ├── imu_republisher.py
+│   │       ├── kalman_filter.py
+│   │       └── odometry_motion_model.py
+│   │
+│   └── panda_utils/
 │       ├── config/
-│       │   ├── ekf.yaml
-│       │   └── odometry_motion_model.rviz
+│       │   └── laser_filter.yaml
 │       ├── launch/
-│       │   └── local_localization.launch.py
-│       └── panda_localization/
-│           ├── imu_republisher.py
-│           ├── kalman_filter.py
-│           └── odometry_motion_model.py
+│       │   └── laser_filter.launch.py
+│       └── panda_utils/
+│           ├── safety_stop.py
+│           └── scan_self_filter.py
 │
 ├── .gitignore
 └── README.md
@@ -590,9 +748,9 @@ panda_ws/
 
 ---
 
-## 🗺️ Roadmap
+# 🗺️ Roadmap
 
-### Completed
+## Completed
 
 * [x] Robot CAD model
 * [x] URDF/Xacro robot description
@@ -600,8 +758,8 @@ panda_ws/
 * [x] Differential-drive model
 * [x] DDR forward kinematics
 * [x] DDR inverse kinematics
-* [x] ros2_control integration
-* [x] Standard DiffDriveController
+* [x] `ros2_control` integration
+* [x] Standard `DiffDriveController`
 * [x] Custom differential-drive controller
 * [x] Wheel-based odometry
 * [x] Noisy odometry simulation
@@ -612,13 +770,16 @@ panda_ws/
 * [x] LiDAR simulation
 * [x] Camera simulation
 * [x] IMU simulation
-* [x] ROS 2 ↔ Gazebo bridge
-* [x] Basic Kalman Filter implementation
-* [x] `robot_localization` EKF configuration
-* [x] Odometry Motion Model
+* [x] ROS 2 ↔ Gazebo communication
+* [x] Basic Kalman Filter
+* [x] `robot_localization` EKF
+* [x] Probabilistic odometry motion model
 * [x] Probabilistic pose sampling
+* [x] LiDAR self-filtering
+* [x] Laser scan range filtering
+* [x] Safety stop
 
-### In Progress
+## In Progress
 
 * [ ] Particle-filter localization
 * [ ] LiDAR measurement model
@@ -626,21 +787,21 @@ panda_ws/
 * [ ] Particle resampling
 * [ ] SLAM
 * [ ] Autonomous navigation
-* [ ] Obstacle avoidance
+* [ ] Dynamic obstacle avoidance
 
-### Future
+## Future
 
 * [ ] Physical hardware integration
 * [ ] Interactive touchscreen application
-* [ ] Restaurant delivery workflow
 * [ ] Computer vision perception
+* [ ] Restaurant delivery workflow
 * [ ] Full autonomous delivery system
 
 ---
 
-## 📚 Learning Resources
+# 📚 Technical Documentation
 
-The `media/` directory contains mathematical notes and references developed alongside the project:
+The `media/` directory contains mathematical and technical notes developed alongside the project.
 
 | Document                                     | Topic                               |
 | -------------------------------------------- | ----------------------------------- |
@@ -651,7 +812,7 @@ The `media/` directory contains mathematical notes and references developed alon
 
 ---
 
-## 📸 Project Media
+# 📸 Project Media
 
 ### CAD
 
@@ -677,7 +838,7 @@ The `media/` directory contains mathematical notes and references developed alon
 
 ---
 
-## 👨‍💻 Author
+# 👨‍💻 Author
 
 **Ahmed Gaber**
 
@@ -687,7 +848,7 @@ Mechatronics Engineer | Robotics Software Engineer
 
 ---
 
-## 📄 License
+# 📄 License
 
-This project is intended for educational, portfolio, and robotics development purposes.
+This project is developed for educational, portfolio, and robotics development purposes.
 

@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.time import Time
 from rclpy.constants import S_TO_NS
 from std_msgs.msg import Float64MultiArray
-from geometry_msgs.msg import TwistStamped, TransformStamped
+from geometry_msgs.msg import Twist, TransformStamped
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 from tf_transformations import quaternion_from_euler
@@ -36,7 +36,7 @@ class SimpleController(Node):
         self.theta_ = 0.0
 
         self.wheel_cmd_pub_ = self.create_publisher(Float64MultiArray, "simple_velocity_controller/commands", 10)
-        self.vel_sub_ = self.create_subscription(TwistStamped, "panda_controller/cmd_vel", self.velCallback, 10)
+        self.vel_sub_ = self.create_subscription(Twist, "panda_controller/cmd_vel_unstamped", self.velCallback, 10)
         self.joint_sub_ = self.create_subscription(JointState, "joint_states", self.jointCallback, 10)
         self.odom_pub_ = self.create_publisher(Odometry, "panda_controller/odom", 10)
 
@@ -67,10 +67,8 @@ class SimpleController(Node):
         # Get the robot velocity vector:
         # [v] = [linear velocity (v)]
         # [ω]   [angular velocity (ω)]
-        robot_speed = np.array([
-            [msg.twist.linear.x],
-            [msg.twist.angular.z]
-        ])
+        robot_speed = np.array([[msg.linear.x],
+                               [msg.angular.z]])
         # Compute wheel angular velocities:
         # [φ_R] = (conversion matrix)^(-1) · [v]
         # [φ_L]                              [ω]      

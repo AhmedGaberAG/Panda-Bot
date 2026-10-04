@@ -1,16 +1,14 @@
 joy_teleop:
   ros__parameters:
-
     move:
       type: topic
       interface_type: geometry_msgs/msg/TwistStamped
-      topic_name: panda_controller/cmd_vel
+      topic_name: input_joy/cmd_vel_stamped
 
       # R1 button acts as the deadman switch
       deadman_buttons: [5]
 
       axis_mappings:
-
         # Right analog stick — vertical axis
         twist-linear-x:
           axis: 1
